@@ -27,9 +27,8 @@ audiorate_renditions=(
 "192k"
 )
 
-format_to_convert=(
-"matroska,webm"
-)
+# Formats supported natively by myCloud video players are: mov,mp4,m4a,3gp,3g2,mj2.
+supported_formats="mov,mp4,m4a,3gp,3g2,mj2"
 
 max_bitrate_ratio=1.07          # Maximum accepted bitrate fluctuations.
 rate_monitor_buffer_ratio=1.5   # Maximum buffer size between bitrate conformance checks.
@@ -85,7 +84,12 @@ echo -e "---------------------"
 eval $(ffprobe -loglevel error -select_streams a:0 -show_entries stream=codec_name,sample_rate,bit_rate -of default=noprint_wrappers=1 ${source});
 audio_codec_name=${codec_name}
 audio_sample_rate=${sample_rate}
-audio_bit_rate=${bit_rate}
+if [[ ${bit_rate} =~ [^[:digit:]] ]]
+then
+    audio_bit_rate=-1
+else
+    audio_bit_rate=$((${bit_rate}/1000))
+fi
 echo -e "\n------- AUDIO STREAM 0 -------"
 echo -e "Codec: ${audio_codec_name}"
 echo -e "Sample rate (Hz): ${audio_sample_rate}"
@@ -103,26 +107,27 @@ encoding_required=false
 echo "Checking format and video stream 0 bitrate..."
 if [ "$format_bit_rate_kbps" -ge "$max_supported_bitrate" ]; then
 	echo "Bitrate too high, re-encoding required"
+	original_bitrate=${format_bit_rate_kbps}
 	encoding_required=true
 else
 	if [ "$video_bitrate" -ge "$max_supported_bitrate" ]; then
 		echo "Bitrate too high, re-encoding required"
+		original_bitrate=${video_bitrate}
 		encoding_required=true
 	else
 		echo "No need to change bitrate"
+		original_bitrate=${format_bit_rate_kbps}
 	fi
 fi
 
-# FIXME: implement smart and selective encoding options.
-for i in "${format_to_convert[@]}"
-do
-    if [ "$i" == "${format_format_name}" ] ; then
-        echo "Found format to convert: ${i}"
-        encoding_required=true
-    fi
-done
+# Check if the main format is supported natively by myCloud video players on client side.
+if [ "${supported_formats}" != "${format_format_name}" ] ; then
+	echo "Found format to convert: ${format_format_name}"
+	encoding_required=true
+fi
 
-# FIXME: implement smart and selective encoding options.
+# Check if the audio codec is supported natively by myCloud video players on client side.
+# TODO
 
 
 if [ "$encoding_required" = true ] ; then
@@ -136,7 +141,6 @@ if [ "$encoding_required" = true ] ; then
 	
 	cmd=""	
 
-	# FIXME: if the original bitrate is less or equal, probably it's better to use that value.
 	if [ "$video_height" -gt 1440 ]; then
 		bitrate=${bitrate_renditions[3]}
 		audiorate=${audiorate_renditions[3]}
@@ -153,6 +157,18 @@ if [ "$encoding_required" = true ] ; then
 				audiorate=${audiorate_renditions[0]}
 			fi		
 		fi
+	fi
+	
+	# If the original video bitrate is less or equal, probably it's better to use it.
+	int_bitrate="$(echo "`echo ${bitrate} | grep -oE '[[:digit:]]+'`" | bc)"
+	if [ "${int_bitrate}" -gt "${original_bitrate}" ]; then
+		bitrate="${original_bitrate}k"
+	fi
+	
+	# If the original audio bitrate is less or equal, probably it's better to use it.
+	int_audiorate="$(echo "`echo ${audiorate} | grep -oE '[[:digit:]]+'`" | bc)"
+	if [ "$int_audiorate" -gt "$audio_bit_rate" ]; then
+		audiorate="${audio_bit_rate}k"
 	fi
 	
 	maxrate="$(echo "`echo ${bitrate} | grep -oE '[[:digit:]]+'`*${max_bitrate_ratio}" | bc)"
