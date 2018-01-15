@@ -191,7 +191,10 @@ if [ "$encoding_required" = true ] ; then
     echo_info "Setting encoding parameters"
     
 	# Static parameters.
-	static_params="-c:a aac -ar 48000 -c:v h264 -profile:v main -crf 20 -sc_threshold 0"
+	# Constant Rate Factor (CRF): 18 is considered to be visually lossless or nearly so (bigger file size).
+	# Profile compatibility: https://trac.ffmpeg.org/wiki/Encode/H.264#Compatibility
+	# Preset: medium (default preset, no need to specify it).
+	static_params="-c:a aac -ar 48000 -c:v h264 -profile:v high -level 4.0 -crf 18"
 	
 	# Misc parameters.
 	misc_params="-hide_banner -y"
