@@ -254,4 +254,6 @@ if [ "$encoding_required" = true ] ; then
 	fi
 	
 	echo_info "Done"
+else
+	echo_info "Re-encoding not necessary, nothing to do. Original file can be played."
 fi
