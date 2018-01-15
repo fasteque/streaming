@@ -27,8 +27,9 @@ audiorate_renditions=(
 "192k"
 )
 
-# Formats supported natively by myCloud video players are: mov,mp4,m4a,3gp,3g2,mj2.
-supported_formats="mov,mp4,m4a,3gp,3g2,mj2"
+# Formats supported natively by myCloud video players.
+supported_video_formats="mov,mp4,m4a,3gp,3g2,mj2"
+supported_audio_codec="aac"
 
 max_bitrate_ratio=1.07          # Maximum accepted bitrate fluctuations.
 rate_monitor_buffer_ratio=1.5   # Maximum buffer size between bitrate conformance checks.
@@ -121,13 +122,16 @@ else
 fi
 
 # Check if the main format is supported natively by myCloud video players on client side.
-if [ "${supported_formats}" != "${format_format_name}" ] ; then
+if [ "${supported_video_formats}" != "${format_format_name}" ] ; then
 	echo "Found format to convert: ${format_format_name}"
 	encoding_required=true
 fi
 
 # Check if the audio codec is supported natively by myCloud video players on client side.
-# TODO
+if [ "${supported_audio_codec}" != "${audio_codec_name}" ] ; then
+	echo "Found audio codec to convert: ${audio_codec_name}"
+	encoding_required=true
+fi
 
 
 if [ "$encoding_required" = true ] ; then
