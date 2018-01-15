@@ -20,6 +20,10 @@ public class FFMpegProbe {
 
     public ProbeResult probeFile(Path path) throws ProbeException {
         try {
+            /*
+                Default implementation run the following command:
+                ffprobe -v quiet -print_format json -show_error -show_format -show_streams INPUT_FILE
+             */
             FFmpegProbeResult probeResult = ffprobe.probe(path.toString());
             return resultFactory.from(probeResult);
         } catch (Exception e) {
