@@ -2,6 +2,7 @@
 set -e
 
 red='\033[0;31m'
+green='\033[0;32m'
 yellow='\033[0;33m'
 blue='\033[0;34m'
 NC='\033[0m' # No Color
@@ -14,16 +15,20 @@ function print_usage() {
 	echo "Example: $0 /path/to/video_file"
 }
 
+function echo_file_info() {
+	echo -e "${green}[FILE]   $1${NC}"
+}
+
 function echo_info() {
-	echo -e "${blue}[INFO]	$1${NC}"
+	echo -e "${blue}[INFO]   $1${NC}"
 }
 
 function echo_warn() {
-	echo -e "${yellow}[WARN] $1${NC}"
+	echo -e "${yellow}[WARN]   $1${NC}"
 }
 
 function echo_error() {
-	echo -e "${red}[ERROR]	$1${NC}"
+	echo -e "${red}[ERR!]   $1${NC}"
 }
 
 bitrate_renditions=(
@@ -89,6 +94,8 @@ source="${1}"
 target="${source##*/}"
 # Strip extension.
 target="${target%.*}"
+extension="${source##*.}"
+echo_info "File extension: ${extension}"
 
 # Get FORMAT info.
 eval $(ffprobe -v error -show_entries format=bit_rate,size,duration,filename,format_name -of default=noprint_wrappers=1 ${source})
@@ -102,13 +109,13 @@ format_size=${size}
 format_duration=${duration}
 format_filename=${filename}
 format_format_name=${format_name}
-echo -e "\n------- FILE FORMAT -------"
-echo -e "File: ${format_filename}"
-echo -e "Bitrate (kbps): ${format_bit_rate_kbps}"
-echo -e "Size (bytes): ${format_size}"
-echo -e "Duration (seconds): ${format_duration}"
-echo -e "Format: ${format_format_name}"
-echo -e "---------------------"
+echo_file_info "------- FILE FORMAT -------"
+echo_file_info "File: ${format_filename}"
+echo_file_info "Bitrate (kbps): ${format_bit_rate_kbps}"
+echo_file_info "Size (bytes): ${format_size}"
+echo_file_info "Duration (seconds): ${format_duration}"
+echo_file_info "Format: ${format_format_name}"
+echo_file_info "---------------------"
 
 # Get VIDEO stream info.
 eval $(ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width,height,codec_name,avg_frame_rate,bit_rate -of default=noprint_wrappers=1 ${source});
@@ -121,12 +128,12 @@ then
 else
     video_bitrate=$((${bit_rate}/1000))
 fi
-echo -e "\n------- VIDEO STREAM 0 -------"
-echo -e "Width: ${video_width}"
-echo -e "Height: ${video_height}"
-echo -e "Codec: ${video_codec_name}"
-echo -e "Bitrate (kbps): ${video_bitrate}"
-echo -e "---------------------"
+echo_file_info "------- VIDEO STREAM 0 -------"
+echo_file_info "Width: ${video_width}"
+echo_file_info "Height: ${video_height}"
+echo_file_info "Codec: ${video_codec_name}"
+echo_file_info "Bitrate (kbps): ${video_bitrate}"
+echo_file_info "---------------------"
 
 # Get AUDIO stream info.
 eval $(ffprobe -loglevel error -select_streams a:0 -show_entries stream=codec_name,sample_rate,bit_rate -of default=noprint_wrappers=1 ${source});
@@ -138,11 +145,11 @@ then
 else
     audio_bit_rate=$((${bit_rate}/1000))
 fi
-echo -e "\n------- AUDIO STREAM 0 -------"
-echo -e "Codec: ${audio_codec_name}"
-echo -e "Sample rate (Hz): ${audio_sample_rate}"
-echo -e "Bitrate (kbps): ${audio_bit_rate}"
-echo -e "---------------------\n"
+echo_file_info "------- AUDIO STREAM 0 -------"
+echo_file_info "Codec: ${audio_codec_name}"
+echo_file_info "Sample rate (Hz): ${audio_sample_rate}"
+echo_file_info "Bitrate (kbps): ${audio_bit_rate}"
+echo_file_info "---------------------\n"
 
 encoding_required=false
 
