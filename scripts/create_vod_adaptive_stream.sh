@@ -1,9 +1,30 @@
 #!/usr/bin/env bash
-
 set -e
 
-# Usage create_vod_adaptive_stream.sh SOURCE_FILE [OUTPUT_NAME]
-[[ ! "${1}" ]] && echo "Usage: create_vod_adaptive_stream.sh SOURCE_FILE" && exit 1 
+red='\033[0;31m'
+yellow='\033[0;33m'
+blue='\033[0;34m'
+NC='\033[0m' # No Color
+
+function print_usage() {
+	echo "Usage: $0 [options] <source>"
+	echo "	<source>    The video file to probe and re-encode."
+	echo "Options:"
+	echo "	-m          Dry run."
+	echo "Example: $0 /path/to/video_file"
+}
+
+function echo_info() {
+	echo -e "${blue}[INFO]	$1${NC}"
+}
+
+function echo_warn() {
+	echo -e "${yellow}[WARN] $1${NC}"
+}
+
+function echo_error() {
+	echo -e "${red}[ERROR]	$1${NC}"
+}
 
 bitrate_renditions=(
 #720p
@@ -36,7 +57,32 @@ max_bitrate_ratio=1.07          # Maximum accepted bitrate fluctuations.
 rate_monitor_buffer_ratio=1.5   # Maximum buffer size between bitrate conformance checks.
 max_supported_bitrate=25000
 
-#########################################################################
+dry_run=false
+# Read options
+while getopts ":m" opt; do
+	case $opt in
+		m)
+			dry_run=true
+			;;
+		\?)
+			echo_error "Invalid option!" >&2
+			print_usage
+			exit 1
+			;;
+		:)
+		print_usage
+		exit 1
+		;;
+	esac
+done
+shift $(($OPTIND - 1))
+
+# Check that the number of arguments is correct.
+if [ $# != 1 ]; then
+	print_usage
+	exit 1
+fi
+
 
 source="${1}"
 # Leave only last component of path.
@@ -106,43 +152,43 @@ encoding_required=false
 # 3: audio codec not supported
 
 # Filter out videos for which original file can used for playback.
-echo "Checking format and video stream 0 bitrate..."
+echo_info "Checking format and video stream 0 bitrate..."
 if [ "$format_bit_rate_kbps" -ge "$max_supported_bitrate" ]; then
-	echo "Bitrate too high, re-encoding required"
+	echo_warn "Bitrate too high, re-encoding required"
 	original_bitrate=${format_bit_rate_kbps}
 	encoding_required=true
 else
 	if [ "$video_bitrate" -ge "$max_supported_bitrate" ]; then
-		echo "Bitrate too high, re-encoding required"
+		echo_warn "Bitrate too high, re-encoding required"
 		original_bitrate=${video_bitrate}
 		encoding_required=true
 	else
-		echo "No need to change bitrate"
+		echo_warn "No need to change bitrate"
 		original_bitrate=${format_bit_rate_kbps}
 	fi
 fi
 
 # Check if the main format is supported natively by myCloud video players on client side.
 if [ "${supported_video_formats}" != "${format_format_name}" ] ; then
-	echo "Found format to convert: ${format_format_name}"
+	echo_warn "Found format to convert: ${format_format_name}"
 	encoding_required=true
 fi
 
 # Check if the video codec is supported natively by myCloud video players on client side.
 if [ "${supported_video_codec}" != "${video_codec_name}" ] ; then
-	echo "Found video codec to convert: ${video_codec_name}"
+	echo_warn "Found video codec to convert: ${video_codec_name}"
 	encoding_required=true
 fi
 
 # Check if the audio codec is supported natively by myCloud video players on client side.
 if [ "${supported_audio_codec}" != "${audio_codec_name}" ] ; then
-	echo "Found audio codec to convert: ${audio_codec_name}"
+	echo_warn "Found audio codec to convert: ${audio_codec_name}"
 	encoding_required=true
 fi
 
 
 if [ "$encoding_required" = true ] ; then
-    echo "Setting encoding parameters"
+    echo_info "Setting encoding parameters"
     
 	# Static parameters.
 	static_params="-c:a aac -ar 48000 -c:v h264 -profile:v main -crf 20 -sc_threshold 0"
@@ -185,14 +231,16 @@ if [ "$encoding_required" = true ] ; then
 	maxrate="$(echo "`echo ${bitrate} | grep -oE '[[:digit:]]+'`*${max_bitrate_ratio}" | bc)"
   	bufsize="$(echo "`echo ${bitrate} | grep -oE '[[:digit:]]+'`*${rate_monitor_buffer_ratio}" | bc)"
 	
-	cmd+=" ${static_params}"
+	cmd+="${static_params}"
 	cmd+=" -b:v ${bitrate} -maxrate ${maxrate%.*}k -bufsize ${bufsize%.*}k -b:a ${audiorate}"
 	
 	cmd+=" NEW_${target}.mp4"
 	
 	# Start conversion.
-	echo -e "Executing command:\nffmpeg ${misc_params} -i ${source} ${cmd}"
-	ffmpeg ${misc_params} -i ${source} ${cmd}
+	echo_info "Command to execute:\nffmpeg ${misc_params} -i ${source} ${cmd}"
+	if [ "$dry_run" = false ] ; then
+		ffmpeg ${misc_params} -i ${source} ${cmd}
+	fi
 	
-	echo "Done"
+	echo_info "Done"
 fi
