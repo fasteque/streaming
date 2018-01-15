@@ -194,7 +194,8 @@ if [ "$encoding_required" = true ] ; then
 	# Constant Rate Factor (CRF): 18 is considered to be visually lossless or nearly so (bigger file size).
 	# Profile compatibility: https://trac.ffmpeg.org/wiki/Encode/H.264#Compatibility
 	# Preset: medium (default preset, no need to specify it).
-	static_params="-c:a aac -ar 48000 -c:v h264 -profile:v high -level 4.0 -crf 18"
+	# Faststart for web video: -movflags +faststart (this will move some info to the beginning of the file and allow the video to begin playing before it is completely downloaded).
+	static_params="-c:a aac -ar 48000 -c:v h264 -profile:v high -level 4.0 -crf 18 -movflags +faststart"
 	
 	# Misc parameters.
 	misc_params="-hide_banner -y"
